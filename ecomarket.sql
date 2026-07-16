@@ -21,6 +21,15 @@ SET time_zone = "+00:00";
 -- Database: `ecomarket`
 --
 
+--
+-- Drop existing tables if they exist to allow clean import
+--
+DROP TABLE IF EXISTS `products`;
+DROP TABLE IF EXISTS `vendors`;
+DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `categories`;
+DROP TABLE IF EXISTS `roles`;
+
 -- --------------------------------------------------------
 
 --
@@ -28,8 +37,10 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `roles` (
-  `id` int(11) NOT NULL,
-  `role_name` varchar(30) NOT NULL
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `role_name` varchar(30) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `role_name` (`role_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -49,7 +60,7 @@ INSERT INTO `roles` (`id`, `role_name`) VALUES
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `fullname` varchar(100) NOT NULL,
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
@@ -57,7 +68,10 @@ CREATE TABLE `users` (
   `address` text DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','staff','vendor','customer') NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -70,40 +84,73 @@ INSERT INTO `users` (`id`, `fullname`, `username`, `email`, `phone`, `address`, 
 (6, 'Charlotte ', 'Admin', 'Charlotte7311@hotmail.com', '0124128447', 'Inti International ', '$2y$10$A/ng3OsnF8YJgEapjlHcv.rp11ZzsejNeBOylw2euQtCMDzGN3cky', 'admin', '2026-07-08 04:37:39'),
 (7, 'Lemonnn', 'Staff', 'Lemon2527@hotmail.com', '0124128448', 'Agro Market ', '$2y$10$mMQW7BjDThEEqgMfa4xoAOjYkea2vp9Je8k3S7nScL.09sqlg5YLK', 'staff', '2026-07-08 04:38:34');
 
---
--- Indexes for dumped tables
---
+-- --------------------------------------------------------
 
 --
--- Indexes for table `roles`
---
-ALTER TABLE `roles`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `role_name` (`role_name`);
-
---
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`),
-  ADD UNIQUE KEY `email` (`email`);
-
---
--- AUTO_INCREMENT for dumped tables
+-- Table structure for table `categories`
 --
 
---
--- AUTO_INCREMENT for table `roles`
---
-ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+CREATE TABLE `categories` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- AUTO_INCREMENT for table `users`
+-- Dumping data for table `categories`
 --
-ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+INSERT INTO `categories` (`id`, `name`, `description`) VALUES
+(1, 'Vegetables', 'Fresh vegetables supplied by local farmers.'),
+(2, 'Fruits', 'Seasonal fruits with quality and freshness.'),
+(3, 'Livestock', 'Cattle, poultry, goats, and farm animals.'),
+(4, 'Fishery', 'Fresh fishery products from trusted suppliers.'),
+(5, 'Grains', 'Rice, wheat, corn, and other cereal crops.'),
+(6, 'Farming Tools', 'Equipments and tools for agricultural operations.');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `vendors`
+--
+
+CREATE TABLE `vendors` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `store_name` varchar(100) DEFAULT NULL,
+  `store_description` text DEFAULT NULL,
+  `subscription_tier` enum('basic','premium') NOT NULL DEFAULT 'basic',
+  `subscription_status` varchar(20) NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_vendors_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `products`
+--
+
+CREATE TABLE `products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `vendor_id` int(11) NOT NULL,
+  `category_id` int(11) DEFAULT NULL,
+  `name` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `stock` int(11) NOT NULL DEFAULT 0,
+  `image_url` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `vendor_id` (`vendor_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `fk_products_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
