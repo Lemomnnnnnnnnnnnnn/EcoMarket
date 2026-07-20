@@ -4,6 +4,11 @@ include("../config/database.php");
 
 $user_id = $_SESSION['user_id'];
 
+$stmt = $conn->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
 if (!isset($_SESSION['compare_list'])) {
     $_SESSION['compare_list'] = [];
 }
@@ -13,6 +18,14 @@ $cart_count_query = $conn->query("SELECT SUM(quantity) as cnt FROM cart WHERE us
 $cart_count = $cart_count_query->fetch_assoc()['cnt'];
 $cart_count = $cart_count ? (int)$cart_count : 0;
 $current_page = basename($_SERVER['PHP_SELF']);
+
+$status_class = [
+    'pending' => 'stock-low',
+    'processing' => 'stock-low',
+    'shipped' => 'stock-instock',
+    'delivered' => 'stock-instock',
+    'cancelled' => 'stock-out',
+];
 ?>
 
 <!DOCTYPE html>
@@ -24,7 +37,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Customer Dashboard</title>
+<title>Order History</title>
 
 <link rel="stylesheet" href="../css/style.css">
 
@@ -69,65 +82,87 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 </header>
 
-<div class="dash-container">
+<div class="cart-container">
 
-<div class="dash-welcome">
+<h1>Order History</h1>
 
-<h1>Welcome back, <?php echo $_SESSION['fullname']; ?> 🌿</h1>
+<?php if (count($orders) == 0) { ?>
 
-<p>Here's what's happening with your account today.</p>
+<div class="empty-cart">
 
-</div>
+<p>You haven't placed any orders yet.</p>
 
-<div class="dash-section">
-
-<h2>Quick Actions</h2>
-
-<div class="dash-actions-grid">
-
-<a href="product_list.php" class="dash-action-card">
-
-<span class="dash-action-icon">🛍️</span>
-
-<span class="dash-action-title">Browse Products</span>
-
-<span class="dash-action-desc">Explore everything on Eco Market</span>
-
-</a>
-
-<a href="cart.php" class="dash-action-card">
-
-<span class="dash-action-icon">🛒</span>
-
-<span class="dash-action-title">My Cart</span>
-
-<span class="dash-action-desc">Edit your cart and proceed to checkout</span>
-
-</a>
-
-<a href="order_history.php" class="dash-action-card">
-
-<span class="dash-action-icon">📦</span>
-
-<span class="dash-action-title">Order History</span>
-
-<span class="dash-action-desc">Track and review past orders</span>
-
-</a>
-
-<a href="../profile.php" class="dash-action-card">
-
-<span class="dash-action-icon">👤</span>
-
-<span class="dash-action-title">My Profile</span>
-
-<span class="dash-action-desc">Update your account details</span>
-
-</a>
+<a href="product_list.php" class="btn-primary">Start Shopping</a>
 
 </div>
 
+<?php } else { ?>
+
+<div class="cart-table-wrap">
+
+<table class="cart-table">
+
+<thead>
+
+<tr>
+
+<th>Order #</th>
+
+<th>Date</th>
+
+<th>Total</th>
+
+<th>Status</th>
+
+<th>Payment</th>
+
+<th></th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<?php foreach ($orders as $order) { ?>
+
+<tr>
+
+<td><?php echo htmlspecialchars($order['order_number']); ?></td>
+
+<td><?php echo date('d M Y', strtotime($order['created_at'])); ?></td>
+
+<td>RM <?php echo number_format($order['total_amount'], 2); ?></td>
+
+<td><span class="stock-badge <?php echo $status_class[$order['status']] ?? 'stock-low'; ?>"><?php echo ucfirst($order['status']); ?></span></td>
+
+<td><span class="stock-badge <?php echo $order['payment_status'] === 'paid' ? 'stock-instock' : 'stock-out'; ?>"><?php echo ucfirst($order['payment_status']); ?></span></td>
+
+<td class="order-history-actions">
+
+<a href="order_tracking.php?order_id=<?php echo $order['id']; ?>" class="btn-small btn-outline-small">Track</a>
+
+<form method="POST" action="reorder.php">
+
+<input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+
+<button type="submit" class="btn-small">Reorder</button>
+
+</form>
+
+</td>
+
+</tr>
+
+<?php } ?>
+
+</tbody>
+
+</table>
+
 </div>
+
+<?php } ?>
 
 </div>
 
